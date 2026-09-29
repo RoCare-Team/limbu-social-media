@@ -27,6 +27,31 @@ cp .env.example .env
 uvicorn backend.main:app --reload --port 8000
 ```
 
+Project root se `uvicorn backend.main:app` chalao — ya `backend/` folder ke andar se
+`uvicorn main:app --reload`, dono chalte hain. `.env`, database aur `uploads/` hamesha
+project root me hi rehte hain.
+
+`IG_ACCESS_TOKEN` set ho to login ke bina bhi dashboard chal jata hai; "Continue with
+Instagram" button ke liye `IG_APP_ID` aur `IG_APP_SECRET` chahiye.
+
+### React frontend (`frontend/`)
+
+Dashboard ka React + Vite version. Backend (port 8000) chalu rakho, phir:
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173 - /api aur /auth backend pe proxy hote hain
+npm run build      # frontend/dist banata hai
+```
+
+`frontend/dist` ban jane ke baad FastAPI khud usko `/` pe serve karta hai (http://localhost:8000),
+warna purana `backend/static/index.html` dikhata hai. Deploy karte waqt build command me
+`cd frontend && npm install && npm run build` bhi add karo.
+
+Dev server (`npm run dev`) ke saath Instagram login test karna ho to `.env` me
+`FRONTEND_URL=http://localhost:5173` daalo, taaki login ke baad browser Vite app pe wapas aaye.
+
 Browser me kholo: **http://localhost:8000**
 
 Login button dabao, permissions allow karo — dashboard, insights, comments, manual reply sab kaam karega.

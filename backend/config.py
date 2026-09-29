@@ -1,7 +1,10 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Project root (the folder that holds .env). Resolved from this file so the app
+# behaves the same whether uvicorn is started from the root or from backend/.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # ---- Fill these in your .env file (see .env.example) ----
 
@@ -35,7 +38,9 @@ IG_REFRESH_URL = "https://graph.instagram.com/refresh_access_token"
 
 # Vercel's filesystem is read-only except /tmp (which is not persistent).
 ON_VERCEL = bool(os.getenv("VERCEL"))
-DB_PATH = os.getenv("DB_PATH", "/tmp/ig_dashboard.db" if ON_VERCEL else "ig_dashboard.db")
+DB_PATH = os.getenv(
+    "DB_PATH", "/tmp/ig_dashboard.db" if ON_VERCEL else os.path.join(BASE_DIR, "ig_dashboard.db")
+)
 
 # Optional: Turso (SQLite-compatible, remote) database. When both are set, the
 # app uses Turso instead of a local SQLite file — needed on serverless hosts
@@ -46,11 +51,19 @@ TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
 
 # Folder where images uploaded for publishing are stored. Instagram must be able
 # to download the image over a public URL, so these are served at /uploads/<file>.
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/uploads" if ON_VERCEL else "uploads")
+UPLOAD_DIR = os.getenv(
+    "UPLOAD_DIR", "/tmp/uploads" if ON_VERCEL else os.path.join(BASE_DIR, "uploads")
+)
 
 # Public base URL of this deployment, used to build the image_url that Instagram
 # fetches when publishing. Falls back to the incoming request's own host.
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+
+# React frontend (frontend/). After `npm run build` its dist/ folder is served at /
+# instead of backend/static/index.html. FRONTEND_URL is where the OAuth callback
+# sends the browser back to - set it to http://localhost:5173 while using `npm run dev`.
+FRONTEND_DIST = os.getenv("FRONTEND_DIST", os.path.join(BASE_DIR, "frontend", "dist"))
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").rstrip("/")
 
 # ---------------------------------------------------------------------------
 # Instagram API with Instagram Login — required scopes for this dashboard.

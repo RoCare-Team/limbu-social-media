@@ -65,12 +65,26 @@ def get_media(limit: int = 25):
     })
 
 
-def get_media_insights(media_id: str, metrics: str = "reach,likes,comments,shares,saved"):
+BASE_METRICS = "reach,likes,comments,shares,saved"
+# Richer metric sets per media type. Not every account/media supports all of
+# them, so callers fall back to BASE_METRICS on error.
+EXTENDED_METRICS = {
+    "VIDEO": BASE_METRICS + ",views,total_interactions,ig_reels_avg_watch_time,ig_reels_video_view_total_time",
+    "IMAGE": BASE_METRICS + ",views,total_interactions,profile_visits,follows",
+    "CAROUSEL_ALBUM": BASE_METRICS + ",views,total_interactions",
+}
+
+
+def get_media_insights(media_id: str, metrics: str = BASE_METRICS):
     return _get(f"{media_id}/insights", {"metric": metrics})
 
 
 def get_comments(media_id: str):
-    return _get(f"{media_id}/comments", {"fields": "id,text,username,timestamp,like_count"})
+    """Top-level comments with their reply threads (including our own replies)."""
+    return _get(f"{media_id}/comments", {
+        "fields": "id,text,username,timestamp,like_count,replies{id,text,username,timestamp,like_count}",
+        "limit": 50,
+    })
 
 
 def reply_to_comment(comment_id: str, message: str):

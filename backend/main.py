@@ -1,18 +1,29 @@
 from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File
-from fastapi.responses import PlainTextResponse, JSONResponse, RedirectResponse
+from fastapi.responses import PlainTextResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import hmac
 import hashlib
 import os
+import sys
 import time
 import uuid
+from urllib.parse import urlencode
 
-from .config import VERIFY_TOKEN, APP_SECRET, UPLOAD_DIR, PUBLIC_BASE_URL, REQUIRED_SCOPES
+# Allow `uvicorn main:app` from inside backend/ as well as `uvicorn backend.main:app`
+# from the project root: without a parent package the relative imports below fail.
+if not __package__:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    __package__ = "backend"
+
+from .config import (
+    VERIFY_TOKEN, APP_SECRET, UPLOAD_DIR, PUBLIC_BASE_URL, REQUIRED_SCOPES,
+    FRONTEND_DIST, FRONTEND_URL,
+)
 from . import instagram_client as ig
 from . import oauth
 from .db import (
-    init_db, get_conn, log_activity, get_account, save_account, clear_account,
+    init_db, get_conn, log_activity, log_reply, get_account, save_account, clear_account,
 )
 from .rules_engine import find_matching_reply
 
@@ -28,6 +39,11 @@ app.add_middleware(
 init_db()
 
 
+@app.exception_handler(ig.NotConnectedError)
+def _not_connected(request: Request, exc: ig.NotConnectedError):
+    return JSONResponse({"detail": str(exc)}, status_code=401)
+
+
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
@@ -41,6 +57,8 @@ def healthz():
 def api_profile():
     try:
         return ig.get_profile()
+    except ig.NotConnectedError:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -49,28 +67,55 @@ def api_profile():
 def api_media(limit: int = 12):
     try:
         return ig.get_media(limit=limit)
+    except ig.NotConnectedError:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
 
 
 @app.get("/api/media/{media_id}/insights")
-def api_media_insights(media_id: str):
-    try:
-        return ig.get_media_insights(media_id)
-    except Exception as e:
-        # Some media types don't support all metrics — fall back to reach only
+def api_media_insights(media_id: str, media_type: str | None = None):
+    # Try the richest metric set for this media type, then degrade: some media
+    # (older posts, albums) reject individual metrics.
+    attempts = [ig.EXTENDED_METRICS.get(media_type or ""), ig.BASE_METRICS, "reach"]
+    last_error = None
+    for metrics in filter(None, attempts):
         try:
-            return ig.get_media_insights(media_id, metrics="reach")
-        except Exception as e2:
-            raise HTTPException(500, str(e2))
+            return ig.get_media_insights(media_id, metrics=metrics)
+        except ig.NotConnectedError:
+            raise
+        except Exception as e:
+            last_error = e
+    raise HTTPException(500, str(last_error))
 
 
 @app.get("/api/media/{media_id}/comments")
 def api_media_comments(media_id: str):
     try:
         return ig.get_comments(media_id)
+    except ig.NotConnectedError:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+@app.get("/api/stats")
+def api_stats():
+    """Counts for the overview cards - all local, no Instagram call."""
+    with get_conn() as conn:
+        def count(table, where="1 = 1"):
+            return conn.execute(f"SELECT COUNT(*) AS n FROM {table} WHERE {where}").fetchone()["n"]
+        return {
+            "comment_rules": count("comment_rules"),
+            "dm_rules": count("dm_rules"),
+            "auto_comment_replies": count(
+                "activity_log", "event_type = 'auto_comment_reply' AND status = 'success'"
+            ),
+            "auto_dm_replies": count(
+                "activity_log", "event_type = 'auto_dm_reply' AND status = 'success'"
+            ),
+            "failures": count("activity_log", "status = 'failed'"),
+        }
 
 
 @app.post("/api/comments/{comment_id}/reply")
@@ -78,12 +123,20 @@ def api_reply_comment(comment_id: str, payload: dict):
     message = payload.get("message", "")
     if not message:
         raise HTTPException(400, "message is required")
+    context = {
+        "media_id": payload.get("media_id"),
+        "comment_id": comment_id,
+        "from_username": payload.get("username"),
+        "incoming_text": payload.get("comment_text"),
+    }
     try:
         result = ig.reply_to_comment(comment_id, message)
         log_activity("manual_comment_reply", f"comment_id={comment_id} message={message}")
+        log_reply("comment", "manual", message, **context)
         return result
     except Exception as e:
         log_activity("manual_comment_reply", str(e), status="failed")
+        log_reply("comment", "manual", message, status="failed", error=str(e), **context)
         raise HTTPException(500, str(e))
 
 
@@ -180,6 +233,44 @@ def delete_dm_rule(rule_id: int):
     return {"status": "deleted"}
 
 
+RULE_TABLES = {"comments": "comment_rules", "dms": "dm_rules"}
+
+
+@app.patch("/api/rules/{kind}/{rule_id}")
+def toggle_rule(kind: str, rule_id: int, payload: dict):
+    """Switch a rule on/off without deleting it: {"is_active": true|false}."""
+    table = RULE_TABLES.get(kind)
+    if not table:
+        raise HTTPException(404, "Unknown rule type")
+    is_active = 1 if payload.get("is_active", True) else 0
+    with get_conn() as conn:
+        conn.execute(f"UPDATE {table} SET is_active = ? WHERE id = ?", (is_active, rule_id))
+        conn.commit()
+    return {"status": "updated", "is_active": bool(is_active)}
+
+
+# ---------------------------------------------------------------------------
+# Reply history (comment replies and DM replies we sent)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/replies")
+def api_replies(kind: str | None = None, media_id: str | None = None, limit: int = 100):
+    where, params = [], []
+    if kind:
+        where.append("kind = ?")
+        params.append(kind)
+    if media_id:
+        where.append("media_id = ?")
+        params.append(media_id)
+    sql = "SELECT * FROM reply_log"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+    with get_conn() as conn:
+        return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
 # ---------------------------------------------------------------------------
 # Activity log
 # ---------------------------------------------------------------------------
@@ -223,6 +314,11 @@ def auth_status(request: Request):
     return status
 
 
+def _back_to_dashboard(**params) -> RedirectResponse:
+    """Return to the dashboard (the Vite dev server when FRONTEND_URL is set)."""
+    return RedirectResponse(f"{FRONTEND_URL}/?{urlencode(params)}")
+
+
 @app.get("/auth/login")
 def auth_login(request: Request):
     """Send the user to Instagram's permission screen."""
@@ -243,11 +339,11 @@ def auth_callback(
     """Instagram redirects here after the user presses Allow (or Cancel)."""
     if error:
         log_activity("login", error_description or error, status="failed")
-        return RedirectResponse(f"/?login_error={error_description or error}")
+        return _back_to_dashboard(login_error=error_description or error)
     if not code:
-        return RedirectResponse("/?login_error=No authorization code was returned")
+        return _back_to_dashboard(login_error="No authorization code was returned")
     if not oauth.consume_state(state):
-        return RedirectResponse("/?login_error=Login session expired, please try again")
+        return _back_to_dashboard(login_error="Login session expired, please try again")
 
     redirect_uri = _redirect_uri(request)
     try:
@@ -255,7 +351,7 @@ def auth_callback(
         long_lived = oauth.exchange_for_long_lived(short["access_token"])
     except oauth.OAuthError as e:
         log_activity("login", str(e), status="failed")
-        return RedirectResponse(f"/?login_error={e}")
+        return _back_to_dashboard(login_error=str(e))
 
     token = long_lived["access_token"]
     expires_in = long_lived.get("expires_in")
@@ -275,7 +371,7 @@ def auth_callback(
     except Exception as e:
         log_activity("login", f"token saved but profile fetch failed: {e}", status="failed")
 
-    return RedirectResponse("/?login=success")
+    return _back_to_dashboard(login="success")
 
 
 @app.post("/api/auth/logout")
@@ -377,6 +473,8 @@ def api_publish(payload: dict):
 def api_publish_limit():
     try:
         return ig.get_publishing_limit()
+    except ig.NotConnectedError:
+        raise
     except ig.InstagramAPIError as e:
         raise HTTPException(500, str(e))
 
@@ -416,33 +514,54 @@ async def receive_webhook(request: Request):
     payload = await request.json()
     log_activity("webhook_received", str(payload)[:500])
 
+    account = get_account() or {}
+    own_id = str(account.get("ig_user_id") or "")
+
     for entry in payload.get("entry", []):
         # --- Comments ---
         for change in entry.get("changes", []):
             if change.get("field") == "comments":
                 value = change.get("value", {})
+                # Skip comments written by this account (including our own auto-replies).
+                if own_id and str(value.get("from", {}).get("id", "")) == own_id:
+                    continue
                 comment_id = value.get("id")
                 comment_text = value.get("text", "")
                 reply = find_matching_reply(comment_text, "comment_rules")
                 if reply and comment_id:
+                    context = {
+                        "media_id": value.get("media", {}).get("id"),
+                        "comment_id": comment_id,
+                        "from_id": value.get("from", {}).get("id"),
+                        "from_username": value.get("from", {}).get("username"),
+                        "incoming_text": comment_text,
+                    }
                     try:
                         ig.reply_to_comment(comment_id, reply)
                         log_activity("auto_comment_reply", f"comment_id={comment_id} reply={reply}")
+                        log_reply("comment", "auto", reply, **context)
                     except Exception as e:
                         log_activity("auto_comment_reply", str(e), status="failed")
+                        log_reply("comment", "auto", reply, status="failed", error=str(e), **context)
 
         # --- Direct Messages ---
         for messaging_event in entry.get("messaging", []):
             sender_id = messaging_event.get("sender", {}).get("id")
             message = messaging_event.get("message", {})
+            # Our own outgoing replies come back as echoes - replying to them loops forever.
+            if message.get("is_echo") or (own_id and str(sender_id) == own_id):
+                continue
             text = message.get("text", "")
             reply = find_matching_reply(text, "dm_rules")
             if reply and sender_id:
+                context = {"from_id": sender_id, "incoming_text": text}
                 try:
                     ig.send_dm_reply(sender_id, reply)
                     log_activity("auto_dm_reply", f"sender_id={sender_id} reply={reply}")
+                    log_reply("dm", "auto", reply, **context)
                 except Exception as e:
                     log_activity("auto_dm_reply", str(e), status="failed")
+                    log_reply("dm", "auto", reply, status="failed", error=str(e), **context)
 
     return JSONResponse({"status": "ok"})
 
@@ -454,4 +573,17 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
+# The review guide and API docs live in backend/static regardless of which UI is served.
+def _static_page(name: str):
+    def serve():
+        return FileResponse(os.path.join(STATIC_DIR, name))
+    return serve
+
+
+for _page in ("app-review-guide.html", "api-docs.html"):
+    app.add_api_route(f"/{_page}", _static_page(_page), include_in_schema=False)
+
+# Prefer the built React app; fall back to the single-file dashboard.
+UI_DIR = FRONTEND_DIST if os.path.isfile(os.path.join(FRONTEND_DIST, "index.html")) else STATIC_DIR
+app.mount("/", StaticFiles(directory=UI_DIR, html=True), name="ui")

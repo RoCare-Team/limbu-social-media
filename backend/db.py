@@ -35,6 +35,24 @@ def init_db():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Every comment/DM reply we send, so the dashboard can show what was
+        # said to whom (the Instagram API has no endpoint that lists sent DMs).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reply_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                source TEXT NOT NULL,
+                media_id TEXT,
+                comment_id TEXT,
+                from_id TEXT,
+                from_username TEXT,
+                incoming_text TEXT,
+                reply_text TEXT,
+                status TEXT NOT NULL DEFAULT 'success',
+                error TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ig_account (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -150,5 +168,19 @@ def log_activity(event_type: str, detail: str, status: str = "success"):
         conn.execute(
             "INSERT INTO activity_log (event_type, detail, status) VALUES (?, ?, ?)",
             (event_type, detail, status),
+        )
+        conn.commit()
+
+
+def log_reply(kind: str, source: str, reply_text: str, *, media_id=None, comment_id=None,
+              from_id=None, from_username=None, incoming_text=None, status="success", error=None):
+    """kind: 'comment' | 'dm'; source: 'auto' | 'manual'."""
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO reply_log (kind, source, media_id, comment_id, from_id, from_username,
+                                      incoming_text, reply_text, status, error)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (kind, source, media_id, comment_id, from_id, from_username,
+             incoming_text, reply_text, status, error),
         )
         conn.commit()

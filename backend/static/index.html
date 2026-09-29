@@ -3,680 +3,970 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LimbuAI — Instagram Automation</title>
+<title>LimbuAI Automation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #fafafa;
-    --surface: #ffffff;
-    --surface-2: #f3f4f6;
-    --border: #e5e7eb;
-    --text: #111827;
-    --text-dim: #6b7280;
-    --accent: #eab308;
-    --accent-soft: #facc15;
-    --accent-2: #3b82f6;
-    --accent-3: #ec4899;
-    --ok: #10b981;
-    --err: #ef4444;
+    --bg:#f6f5f2; --surface:#ffffff; --surface-2:#f1efea; --border:#e4e1da;
+    --text:#1b1a17; --dim:#6f6b63; --faint:#a19c92;
+    --brand:#d62976; --brand-2:#fa7e1e; --brand-3:#4f5bd5;
+    --ok:#15803d; --ok-bg:#e8f5ec; --err:#b91c1c; --err-bg:#fdecec; --warn:#a16207; --warn-bg:#fdf6e3;
+    --radius:14px; --shadow:0 1px 2px rgba(27,26,23,.05), 0 4px 16px rgba(27,26,23,.04);
+    --grad:linear-gradient(120deg,var(--brand-2),var(--brand) 50%,var(--brand-3));
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121110; --surface:#1b1a18; --surface-2:#252320; --border:#33302b;
+      --text:#f2efe9; --dim:#a8a298; --faint:#6f6b63;
+      --ok:#4ade80; --ok-bg:#15291c; --err:#f87171; --err-bg:#2c1717; --warn:#facc15; --warn-bg:#2a2412;
+      --shadow:none;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121110; --surface:#1b1a18; --surface-2:#252320; --border:#33302b;
+    --text:#f2efe9; --dim:#a8a298; --faint:#6f6b63;
+    --ok:#4ade80; --ok-bg:#15291c; --err:#f87171; --err-bg:#2c1717; --warn:#facc15; --warn-bg:#2a2412;
+    --shadow:none;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:'Inter', sans-serif;
-    min-height:100vh;
-  }
-  .mono{font-family:'JetBrains Mono', monospace;}
-  h1,h2,h3,.display{font-family:'Montserrat', sans-serif;}
+  html,body{background:var(--bg);}
+  body{color:var(--text); font-family:'Plus Jakarta Sans',system-ui,sans-serif; font-size:14px; line-height:1.5; min-height:100vh;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  button,input,select,textarea{font:inherit; color:inherit;}
+  a{color:inherit;}
 
-  header{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:20px 32px; border-bottom:1px solid var(--border);
-    position:sticky; top:0; background:rgba(250,250,250,0.9); backdrop-filter:blur(8px);
-    z-index:10;
+  /* ---------- layout ---------- */
+  .shell{display:grid; grid-template-columns:240px 1fr; min-height:100vh;}
+  aside{
+    position:sticky; top:0; height:100vh; padding:22px 14px; border-right:1px solid var(--border);
+    background:var(--surface); display:flex; flex-direction:column; gap:4px;
   }
-  .brand{display:flex; align-items:center; gap:12px;}
-  .brand .mark{
-    width:34px; height:34px; border-radius:9px;
-    background:linear-gradient(135deg, var(--accent), var(--accent-soft));
-    display:flex; align-items:center; justify-content:center;
-    font-weight:700; font-family:'Montserrat'; color:#111827;
-  }
-  .brand h1{font-size:18px; font-weight:700; letter-spacing:-0.01em;}
-  .navlink{font-size:13px; color:var(--text-dim); text-decoration:none; padding:6px 12px; border-radius:8px;}
-  .navlink:hover{background:var(--surface-2); color:var(--text);}
-  .pulse{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim);}
-  .pulse .dot{
-    width:8px; height:8px; border-radius:50%; background:var(--ok);
-    box-shadow:0 0 0 0 rgba(16,185,129,0.6);
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse{
-    0%{box-shadow:0 0 0 0 rgba(16,185,129,0.5);}
-    70%{box-shadow:0 0 0 8px rgba(16,185,129,0);}
-    100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}
-  }
+  .brand{display:flex; align-items:center; gap:10px; padding:4px 10px 22px;}
+  .brand .mark{width:34px; height:34px; border-radius:10px; background:var(--grad); color:#fff; display:grid; place-items:center; font-weight:800;}
+  .brand b{font-size:15px; letter-spacing:-.01em;}
+  .brand small{display:block; color:var(--dim); font-size:11.5px; font-weight:500;}
+  .nav{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; color:var(--dim); cursor:pointer; font-weight:600; font-size:13.5px; border:none; background:none; text-align:left; width:100%;}
+  .nav svg{width:18px; height:18px; flex:none;}
+  .nav:hover{background:var(--surface-2); color:var(--text);}
+  .nav.active{background:var(--surface-2); color:var(--text);}
+  .nav.active svg{color:var(--brand);}
+  .nav .count{margin-left:auto; font-size:11px; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:0 7px;}
+  .aside-foot{margin-top:auto; display:flex; flex-direction:column; gap:4px; padding-top:14px; border-top:1px solid var(--border);}
+  .aside-foot a{font-size:12.5px; color:var(--dim); text-decoration:none; padding:6px 12px; border-radius:8px;}
+  .aside-foot a:hover{background:var(--surface-2); color:var(--text);}
 
-  .profile-chip{display:flex; align-items:center; gap:10px; font-size:14px;}
-  .profile-chip .avatar{
-    width:32px; height:32px; border-radius:50%;
-    background:var(--surface-2); border:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-dim);
+  .main{min-width:0;}
+  .topbar{
+    position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:14px; justify-content:space-between;
+    padding:14px 32px; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
   }
+  .topbar h1{font-size:18px; font-weight:700; letter-spacing:-.01em;}
+  .top-right{display:flex; align-items:center; gap:10px;}
+  .status-pill{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--dim); padding:5px 11px; border:1px solid var(--border); border-radius:20px; background:var(--surface);}
+  .status-pill .dot{width:7px; height:7px; border-radius:50%; background:var(--faint);}
+  .status-pill.ok .dot{background:var(--ok); box-shadow:0 0 0 3px var(--ok-bg);}
+  .status-pill.bad .dot{background:var(--err);}
+  .chip{display:flex; align-items:center; gap:9px;}
+  .avatar{width:32px; height:32px; border-radius:50%; background:var(--grad); color:#fff; display:grid; place-items:center; font-weight:700; font-size:13px;}
+  .btn.menu-btn{display:none;}
+  .content{padding:28px 32px 60px; max-width:1200px;}
+  .view{display:none;} .view.active{display:block;}
 
-  main{max-width:1180px; margin:0 auto; padding:32px;}
+  /* ---------- primitives ---------- */
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);}
+  .pad{padding:20px;}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .spacer{flex:1;}
+  .h2{font-size:15px; font-weight:700; margin-bottom:4px;}
+  .sub{color:var(--dim); font-size:13px;}
+  .section{margin-bottom:28px;}
+  .section-head{display:flex; align-items:end; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:9px 15px; border-radius:10px; border:1px solid var(--border); background:var(--surface); cursor:pointer; font-weight:600; font-size:13px; text-decoration:none; white-space:nowrap;}
+  .btn:hover{background:var(--surface-2);}
+  .btn:disabled{opacity:.55; cursor:not-allowed;}
+  .btn.primary{background:var(--text); color:var(--bg); border-color:var(--text);}
+  .btn.primary:hover{opacity:.9;}
+  .btn.ig{background:var(--grad); border:none; color:#fff;}
+  .btn.ig:hover{filter:brightness(1.06);}
+  .btn.danger{color:var(--err);}
+  .btn.sm{padding:5px 10px; font-size:12px; border-radius:8px;}
+  .input, textarea.input, select.input{width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; outline:none;}
+  .input:focus{border-color:var(--brand); background:var(--surface);}
+  label.lbl{display:block; font-size:12px; font-weight:700; color:var(--dim); margin:0 0 6px; text-transform:uppercase; letter-spacing:.05em;}
+  .field{margin-bottom:14px;}
+  .empty{color:var(--dim); text-align:center; padding:28px 12px; font-size:13px;}
+  .badge{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; background:var(--surface-2); color:var(--dim);}
+  .badge.ok{background:var(--ok-bg); color:var(--ok);}
+  .badge.err{background:var(--err-bg); color:var(--err);}
+  .hint{font-size:12.5px; color:var(--dim); line-height:1.6;}
+  code, .code{font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--surface-2); border:1px solid var(--border); padding:1px 6px; border-radius:6px; word-break:break-all;}
+  .skeleton{background:linear-gradient(90deg,var(--surface-2),var(--border),var(--surface-2)); background-size:200% 100%; animation:sk 1.2s infinite;}
+  @keyframes sk{to{background-position:-200% 0;}}
 
-  .stat-strip{
-    display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:36px;
-  }
-  .stat-card{
-    background:var(--surface); border:1px solid var(--border); border-radius:14px;
-    padding:20px;
-  }
-  .stat-card .label{font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;}
-  .stat-card .value{font-size:28px; font-weight:700; font-family:'JetBrains Mono'; }
-  .stat-card{box-shadow:0 1px 2px rgba(17,24,39,0.04);}
-  .stat-card.accent .value{color:#b45309;}
+  /* ---------- overview ---------- */
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px;}
+  .stat{padding:18px 18px 16px;}
+  .stat .l{font-size:12px; color:var(--dim); font-weight:600;}
+  .stat .v{font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:6px; font-variant-numeric:tabular-nums;}
+  .stat .f{font-size:12px; color:var(--faint); margin-top:2px;}
+  .grid-2{display:grid; grid-template-columns:1.4fr 1fr; gap:18px; align-items:start;}
+  .checklist li{list-style:none; display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist .ic{width:20px; height:20px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:11px; font-weight:800; margin-top:1px;}
+  .checklist .ic.ok{background:var(--ok-bg); color:var(--ok);}
+  .checklist .ic.todo{background:var(--warn-bg); color:var(--warn);}
 
-  section{margin-bottom:40px;}
-  .section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
-  .section-head h2{font-size:17px; font-weight:600;}
-  .section-head .sub{font-size:13px; color:var(--text-dim);}
+  /* ---------- posts ---------- */
+  .media-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px;}
+  .media{overflow:hidden; cursor:pointer; transition:transform .15s, border-color .15s; text-align:left; padding:0;}
+  .media:hover{transform:translateY(-2px); border-color:var(--brand);}
+  .media .thumb{aspect-ratio:1; background:var(--surface-2); position:relative; overflow:hidden;}
+  .media .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .media .type{position:absolute; top:8px; left:8px; font-size:10.5px; font-weight:700; background:rgba(0,0,0,.6); color:#fff; padding:2px 7px; border-radius:6px;}
+  .media .body{padding:11px 12px 12px;}
+  .media .cap{font-size:12.5px; color:var(--dim); height:36px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical;}
+  .media .meta{display:flex; gap:12px; margin-top:8px; font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums;}
 
-  .media-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px;}
-  .media-card{
-    background:var(--surface); border:1px solid var(--border); border-radius:14px;
-    overflow:hidden; cursor:pointer; transition:border-color 0.15s, transform 0.15s;
-  }
-  .media-card{box-shadow:0 1px 2px rgba(17,24,39,0.04);}
-  .media-card:hover{border-color:var(--accent-2); transform:translateY(-2px); box-shadow:0 6px 16px rgba(17,24,39,0.08);}
-  .media-card .thumb{
-    width:100%; aspect-ratio:1; background:var(--surface-2); display:flex; align-items:center; justify-content:center;
-    color:var(--text-dim); font-size:12px; overflow:hidden;
-  }
-  .media-card .thumb img{width:100%; height:100%; object-fit:cover;}
-  .media-card .body{padding:12px;}
-  .media-card .caption{font-size:12.5px; color:var(--text-dim); line-height:1.4; height:34px; overflow:hidden;}
-  .media-card .meta{display:flex; gap:12px; margin-top:10px; font-size:12px; font-family:'JetBrains Mono'; color:var(--text-dim);}
+  /* ---------- drawer (post detail) ---------- */
+  .drawer-bg{position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; z-index:40;}
+  .drawer{position:fixed; top:0; right:0; bottom:0; width:min(520px,100%); background:var(--surface); border-left:1px solid var(--border); z-index:41; transform:translateX(100%); transition:transform .2s ease; display:flex; flex-direction:column;}
+  .drawer.open{transform:none;} .drawer-bg.open{display:block;}
+  .drawer-head{display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid var(--border);}
+  .drawer-body{padding:20px; overflow-y:auto; flex:1;}
+  .drawer-media{display:flex; gap:14px; margin-bottom:18px;}
+  .drawer-media img{width:96px; height:96px; object-fit:cover; border-radius:10px; flex:none; background:var(--surface-2);}
+  .insights{display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px; margin-bottom:22px;}
+  .insights div{background:var(--surface-2); border-radius:10px; padding:10px; text-align:center;}
+  .insights .v{font-weight:800; font-size:17px; font-variant-numeric:tabular-nums;}
+  .insights .l{font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em;}
+  .comment{padding:12px 0; border-bottom:1px solid var(--border);}
+  .comment:last-child{border-bottom:none;}
+  .comment .who{font-weight:700; margin-right:6px;}
+  .comment .when{color:var(--faint); font-size:11.5px;}
+  .comment .actions{display:flex; gap:6px; margin-top:8px;}
+  .reply-box{display:none; gap:6px; margin-top:8px;}
+  .reply-box.open{display:flex;}
 
-  .two-col{display:grid; grid-template-columns:1.3fr 1fr; gap:24px; align-items:start;}
-  @media (max-width:900px){.two-col{grid-template-columns:1fr;}}
+  /* ---------- rules ---------- */
+  .tabs{display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:3px; gap:2px;}
+  .tab{padding:7px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; color:var(--dim); border:none; background:none;}
+  .tab.active{background:var(--surface); color:var(--text); box-shadow:var(--shadow);}
+  .rule-form{display:grid; grid-template-columns:1fr 2fr 150px auto; gap:10px; align-items:end;}
+  .rule{display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; padding:14px 20px; border-top:1px solid var(--border);}
+  .rule .kw{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; color:var(--brand);}
+  .rule .reply{color:var(--dim); font-size:13px; margin-top:2px; word-break:break-word;}
+  .rule.off .kw, .rule.off .reply{opacity:.45;}
+  .switch{position:relative; width:36px; height:20px; flex:none;}
+  .switch input{opacity:0; width:0; height:0;}
+  .switch span{position:absolute; inset:0; background:var(--border); border-radius:20px; cursor:pointer; transition:.15s;}
+  .switch span::after{content:""; position:absolute; width:14px; height:14px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s;}
+  .switch input:checked + span{background:var(--ok);}
+  .switch input:checked + span::after{transform:translateX(16px);}
+  .tester{display:flex; gap:10px; align-items:center;}
+  .test-result{font-size:13px; margin-top:10px;}
 
-  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 1px 2px rgba(17,24,39,0.04);}
+  /* ---------- publish ---------- */
+  .publish{display:grid; grid-template-columns:1fr 320px; gap:18px; align-items:start;}
+  .drop{border:1.5px dashed var(--border); border-radius:12px; padding:22px; text-align:center; cursor:pointer; background:var(--surface-2); color:var(--dim); font-size:13px;}
+  .drop:hover, .drop.over{border-color:var(--brand); color:var(--text);}
+  .phone{border-radius:22px; overflow:hidden;}
+  .phone .ph-head{display:flex; align-items:center; gap:9px; padding:11px 12px; font-weight:700; font-size:13px;}
+  .phone .ph-head .avatar{width:28px; height:28px; font-size:12px;}
+  .phone .ph-img{aspect-ratio:1; background:var(--surface-2); display:grid; place-items:center; color:var(--faint); font-size:12px; overflow:hidden;}
+  .phone .ph-img img{width:100%; height:100%; object-fit:cover;}
+  .phone .ph-cap{padding:10px 12px 14px; font-size:13px; white-space:pre-wrap; word-break:break-word;}
+  .quota{height:6px; background:var(--surface-2); border-radius:6px; overflow:hidden; margin-top:8px;}
+  .quota div{height:100%; background:var(--grad);}
 
-  .comment-row{
-    display:flex; justify-content:space-between; gap:12px;
-    padding:12px 0; border-bottom:1px solid var(--border);
-    font-size:13.5px;
-  }
-  .comment-row:last-child{border-bottom:none;}
-  .comment-row .who{color:var(--accent-2); font-weight:600; margin-right:6px;}
-  .comment-row button{
-    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
-    border-radius:8px; padding:5px 10px; font-size:12px; cursor:pointer; white-space:nowrap;
-  }
-  .comment-row button:hover{border-color:var(--accent-2);}
+  /* ---------- activity ---------- */
+  .log{display:grid; grid-template-columns:130px 70px 170px 1fr; gap:12px; padding:11px 20px; border-top:1px solid var(--border); font-size:13px; align-items:baseline;}
+  .log .t{color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums;}
+  .log .d{color:var(--dim); font-size:12.5px; word-break:break-word;}
+  .filters{display:flex; gap:6px; flex-wrap:wrap;}
 
-  .rule-form{display:flex; flex-direction:column; gap:10px; margin-bottom:16px;}
-  .rule-form input, .rule-form select{
-    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
-    border-radius:8px; padding:10px 12px; font-size:13px; font-family:'Inter';
-  }
-  .rule-form button{
-    background:linear-gradient(135deg, var(--accent), var(--accent-soft));
-    border:none; color:#1a1a1a; font-weight:700; border-radius:8px; padding:10px; cursor:pointer; font-size:13px;
-  }
-  .rule-row{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;
-  }
-  .rule-row .kw{color:#b45309; font-family:'JetBrains Mono'; font-size:12px;}
-  .rule-row .arrow{color:var(--text-dim); margin:0 8px;}
-  .rule-row .del{background:none; border:none; color:var(--err); cursor:pointer; font-size:16px;}
+  /* ---------- settings ---------- */
+  .kv{display:grid; grid-template-columns:170px 1fr; gap:10px 16px; font-size:13.5px;}
+  .kv dt{color:var(--dim);}
+  .copy{display:flex; gap:6px; align-items:center;}
 
-  .tabs{display:flex; gap:8px; margin-bottom:16px;}
-  .tab{
-    padding:8px 14px; border-radius:20px; font-size:13px; cursor:pointer;
-    border:1px solid var(--border); color:var(--text-dim);
-  }
-  .tab.active{background:var(--surface-2); color:var(--text); border-color:var(--accent-2);}
+  /* ---------- gate / toast ---------- */
+  .gate{max-width:560px; margin:8vh auto; text-align:center; padding:40px 32px;}
+  .gate .mark{width:56px; height:56px; border-radius:16px; background:var(--grad); margin:0 auto 18px; display:grid; place-items:center; color:#fff; font-weight:800; font-size:22px;}
+  .gate h2{font-size:22px; margin-bottom:8px;}
+  .gate p{color:var(--dim); margin-bottom:22px;}
+  .scopes{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:22px;}
+  .banner{border-radius:12px; padding:12px 16px; font-size:13.5px; margin-bottom:18px; display:flex; gap:12px; align-items:center;}
+  .banner.ok{background:var(--ok-bg); color:var(--ok);}
+  .banner.err{background:var(--err-bg); color:var(--err);}
+  .banner.warn{background:var(--warn-bg); color:var(--warn);}
+  .banner button{margin-left:auto; background:none; border:none; cursor:pointer; font-size:18px; color:inherit;}
+  #toasts{position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:8px; z-index:60;}
+  .toast{background:var(--text); color:var(--bg); padding:10px 14px; border-radius:10px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.2); max-width:360px; animation:tin .2s ease;}
+  .toast.err{background:var(--err); color:#fff;}
+  @keyframes tin{from{opacity:0; transform:translateY(8px);}}
 
-  .log-row{
-    display:flex; gap:10px; align-items:baseline; padding:8px 0; border-bottom:1px solid var(--border);
-    font-size:12.5px;
+  /* ---------- responsive ---------- */
+  @media (max-width:1000px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+    .grid-2, .publish{grid-template-columns:1fr;}
+    .rule-form{grid-template-columns:1fr 1fr;}
+    .log{grid-template-columns:1fr auto; }
+    .log .d{grid-column:1 / -1;}
   }
-  .log-row:last-child{border-bottom:none;}
-  .log-row .time{color:var(--text-dim); font-family:'JetBrains Mono'; font-size:11px; white-space:nowrap;}
-  .log-row .badge{
-    font-size:10px; padding:2px 7px; border-radius:20px; font-family:'JetBrains Mono';
+  @media (max-width:760px){
+    .shell{grid-template-columns:1fr;}
+    aside{position:fixed; z-index:50; left:0; width:250px; transform:translateX(-100%); transition:transform .2s;}
+    aside.open{transform:none; box-shadow:0 0 40px rgba(0,0,0,.3);}
+    .btn.menu-btn{display:inline-flex;}
+    .topbar{padding:12px 16px;}
+    .content{padding:20px 16px 50px;}
+    .chip .who{display:none;}
+    .rule-form{grid-template-columns:1fr;}
+    .kv{grid-template-columns:1fr; gap:2px 0;}
+    .kv dd{margin-bottom:10px;}
   }
-  .badge.success{background:rgba(16,185,129,0.12); color:#047857;}
-  .badge.failed{background:rgba(239,68,68,0.12); color:var(--err);}
-
-  .empty{color:var(--text-dim); font-size:13px; padding:20px 0; text-align:center;}
-  .hint{font-size:12px; color:var(--text-dim); margin-top:10px; line-height:1.6;}
-  .hint code{background:var(--surface-2); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono';}
-
-  #modal-overlay{
-    position:fixed; inset:0; background:rgba(17,24,39,0.5); display:none;
-    align-items:center; justify-content:center; z-index:50;
-  }
-  #modal-overlay.show{display:flex;}
-  #modal{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:520px; width:90%;}
-  #modal img{width:100%; border-radius:10px; margin-bottom:14px;}
-  #modal-insights{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0;}
-  #modal-insights div{background:var(--surface-2); border-radius:8px; padding:10px; text-align:center;}
-  #modal-insights .v{font-family:'JetBrains Mono'; font-weight:700; font-size:16px;}
-  #modal-insights .l{font-size:10px; color:var(--text-dim); text-transform:uppercase;}
-  #modal-close{float:right; background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer;}
-
-  /* --- Instagram login + publishing --- */
-  .ig-btn{
-    display:inline-flex; align-items:center; gap:8px; border:none; cursor:pointer;
-    background:linear-gradient(95deg,#f9ce34,#ee2a7b 45%,#6228d7); color:#fff;
-    font-weight:700; font-size:13px; padding:10px 18px; border-radius:10px;
-    text-decoration:none; font-family:'Montserrat',sans-serif;
-  }
-  .ig-btn:hover{filter:brightness(1.07);}
-  .ig-btn.small{font-size:12px; padding:7px 13px;}
-  .ghost-btn{
-    background:transparent; border:1px solid var(--border); color:var(--text-dim);
-    font-size:12px; padding:7px 12px; border-radius:9px; cursor:pointer;
-  }
-  .ghost-btn:hover{color:var(--text);}
-  #login-gate{
-    background:var(--surface); border:1px solid var(--border); border-radius:16px;
-    padding:38px 32px; text-align:center; margin-bottom:26px;
-  }
-  #login-gate h2{font-size:20px; margin-bottom:8px;}
-  #login-gate p{color:var(--text-dim); font-size:14px; max-width:520px; margin:0 auto 18px;}
-  #login-gate .scopes{
-    display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:18px;
-  }
-  #login-gate .scopes span{
-    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim);
-    background:var(--surface-2); border:1px solid var(--border);
-    padding:4px 9px; border-radius:20px;
-  }
-  .banner{
-    border-radius:12px; padding:12px 16px; font-size:13.5px; margin-bottom:18px;
-    display:flex; justify-content:space-between; align-items:center; gap:12px;
-  }
-  .banner.ok{background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.3); color:#047857;}
-  .banner.err{background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); color:#b91c1c;}
-  .banner button{background:none; border:none; cursor:pointer; font-size:16px; color:inherit;}
-  .publish-form{display:flex; flex-direction:column; gap:10px;}
-  .publish-form input[type=text], .publish-form textarea{
-    width:100%; background:var(--surface-2); border:1px solid var(--border);
-    border-radius:9px; padding:10px 12px; font-size:13px; color:var(--text);
-    font-family:inherit; resize:vertical;
-  }
-  .publish-form label{font-size:12px; font-weight:600; color:var(--text-dim);}
-  .publish-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
-  .publish-preview{
-    max-height:190px; border-radius:10px; border:1px solid var(--border); display:none;
-  }
-  .or-sep{font-size:11.5px; color:var(--text-dim); text-align:center; letter-spacing:.05em;}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <div class="mark">L</div>
-    <h1>LimbuAI Automation</h1>
-  </div>
-  <div class="pulse"><span class="dot"></span> <span id="status-text">Connecting…</span></div>
-  <a class="navlink" href="/app-review-guide.html">📹 App Review Guide</a>
-  <a class="navlink" href="/api-docs.html">📘 API Docs</a>
-  <a class="ig-btn small" id="header-login" href="/auth/login" style="display:none;">Continue with Instagram</a>
-  <div class="profile-chip" id="profile-chip" style="display:none;">
-    <div class="avatar" id="avatar">?</div>
-    <div>
-      <div id="username" class="mono">—</div>
-      <div id="account-type" style="color:var(--text-dim); font-size:11px;">—</div>
+<div class="shell">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="mark">L</div>
+      <div><b>LimbuAI</b><small>Instagram Automation</small></div>
     </div>
-    <button class="ghost-btn" id="logout-btn" onclick="logout()">Log out</button>
-  </div>
-</header>
-
-<main>
-
-  <div id="banner-slot"></div>
-
-  <div id="login-gate" style="display:none;">
-    <h2>Connect your Instagram business account</h2>
-    <p>
-      LimbuAI manages your comments, direct messages, insights and posts. Sign in with
-      Instagram and approve the permissions below to get started.
-    </p>
-    <a class="ig-btn" href="/auth/login">Continue with Instagram</a>
-    <div class="scopes" id="gate-scopes"></div>
-  </div>
-
-  <div id="dashboard-body">
-
-  <div class="stat-strip">
-    <div class="stat-card"><div class="label">Posts</div><div class="value" id="stat-posts">—</div></div>
-    <div class="stat-card"><div class="label">Comment rules</div><div class="value" id="stat-crules">—</div></div>
-    <div class="stat-card"><div class="label">DM rules</div><div class="value" id="stat-drules">—</div></div>
-    <div class="stat-card accent"><div class="label">Auto-replies sent</div><div class="value" id="stat-autoreplies">—</div></div>
-  </div>
-
-  <section>
-    <div class="section-head">
-      <h2>Recent posts &amp; insights</h2>
-      <span class="sub">Click a post to view insights &amp; comments</span>
+    <button class="nav active" data-view="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      Overview
+    </button>
+    <button class="nav" data-view="posts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>
+      Posts &amp; comments
+    </button>
+    <button class="nav" data-view="rules">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Auto-replies <span class="count" id="nav-rules">0</span>
+    </button>
+    <button class="nav" data-view="publish">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Create post
+    </button>
+    <button class="nav" data-view="activity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Activity
+    </button>
+    <button class="nav" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      Settings
+    </button>
+    <div class="aside-foot">
+      <a href="/app-review-guide.html">App Review guide</a>
+      <a href="/api-docs.html">API docs</a>
+      <a href="#" id="theme-toggle">Toggle theme</a>
     </div>
-    <div class="media-grid" id="media-grid">
-      <div class="empty">Loading media…</div>
-    </div>
-  </section>
+  </aside>
 
-  <div class="two-col">
-    <section>
-      <div class="section-head"><h2>Auto-reply rules</h2></div>
-      <div class="panel">
-        <div class="tabs">
-          <div class="tab active" data-tab="comments">Comments</div>
-          <div class="tab" data-tab="dms">Direct Messages</div>
-        </div>
-
-        <div class="rule-form">
-          <input type="text" id="rule-keyword" placeholder="Keyword (e.g. price, order, link)">
-          <input type="text" id="rule-reply" placeholder="Auto-reply message">
-          <select id="rule-match">
-            <option value="contains">Contains keyword</option>
-            <option value="exact">Exact match</option>
-          </select>
-          <button onclick="createRule()">+ Add rule</button>
-        </div>
-
-        <div id="rules-list"></div>
-
-        <div class="hint">
-          Rules fire automatically once your webhook is live. Point your Meta App webhook URL to
-          <code id="webhook-url-hint">https://your-domain.com/webhook</code> and subscribe to
-          <code>comments</code> and <code>messages</code>.
-        </div>
+  <div class="main">
+    <div class="topbar">
+      <div class="row">
+        <button class="btn sm menu-btn" id="menu-btn" aria-label="Menu">☰</button>
+        <h1 id="view-title">Overview</h1>
       </div>
-    </section>
-
-    <section>
-      <div class="section-head"><h2>Live activity</h2></div>
-      <div class="panel" id="activity-panel">
-        <div class="empty">No activity yet</div>
-      </div>
-    </section>
-  </div>
-
-  <section>
-    <div class="section-head">
-      <h2>Create a post</h2>
-      <span class="sub">Publish an image straight to your Instagram feed</span>
-    </div>
-    <div class="panel">
-      <div class="publish-form">
-        <label>Image</label>
-        <div class="publish-row">
-          <input type="file" id="publish-file" accept="image/jpeg,image/png" onchange="uploadImage()">
-          <span id="upload-status" style="font-size:12px; color:var(--text-dim);"></span>
-        </div>
-        <div class="or-sep">OR PASTE A PUBLIC IMAGE URL</div>
-        <input type="text" id="publish-url" placeholder="https://example.com/photo.jpg" oninput="previewImage()">
-        <img id="publish-preview" class="publish-preview">
-
-        <label>Caption</label>
-        <textarea id="publish-caption" rows="3" placeholder="Write your caption..."></textarea>
-
-        <div class="publish-row">
-          <button class="ig-btn" id="publish-btn" onclick="publishPost()">Publish to Instagram</button>
-          <span id="publish-status" style="font-size:12.5px;"></span>
-        </div>
-
-        <div class="hint">
-          Instagram downloads the image from the URL itself, so it must be publicly reachable.
-          On localhost, paste a hosted image URL instead of uploading a file.
+      <div class="top-right">
+        <div class="status-pill" id="status-pill"><span class="dot"></span><span id="status-text">Connecting…</span></div>
+        <a class="btn ig sm" id="header-login" href="/auth/login" style="display:none;">Continue with Instagram</a>
+        <div class="chip" id="profile-chip" style="display:none;">
+          <div class="avatar" id="avatar">?</div>
+          <div class="who"><div class="mono" id="username" style="font-size:13px; font-weight:600;">—</div></div>
         </div>
       </div>
     </div>
-  </section>
 
-  </div><!-- /dashboard-body -->
+    <div class="content">
+      <div id="banner-slot"></div>
 
-</main>
+      <!-- Login gate -->
+      <div id="login-gate" class="card gate" style="display:none;">
+        <div class="mark">L</div>
+        <h2>Connect your Instagram business account</h2>
+        <p>LimbuAI manages comments, DMs, insights and posts for your account. Sign in with Instagram and approve the permissions below.</p>
+        <a class="btn ig" href="/auth/login">Continue with Instagram</a>
+        <div class="scopes" id="gate-scopes"></div>
+      </div>
 
-<div id="modal-overlay">
-  <div id="modal">
-    <button id="modal-close" onclick="closeModal()">×</button>
-    <h3 id="modal-caption" class="display" style="margin-bottom:10px; font-size:15px;"></h3>
-    <div id="modal-insights"></div>
-    <h3 style="font-size:14px; margin:14px 0 8px;">Comments</h3>
-    <div id="modal-comments"></div>
+      <div id="app" style="display:none;">
+
+      <!-- ============ OVERVIEW ============ -->
+      <div class="view active" id="view-overview">
+        <div class="stats">
+          <div class="card stat"><div class="l">Posts</div><div class="v" id="st-posts">—</div><div class="f" id="st-type">&nbsp;</div></div>
+          <div class="card stat"><div class="l">Active rules</div><div class="v" id="st-rules">—</div><div class="f" id="st-rules-f">&nbsp;</div></div>
+          <div class="card stat"><div class="l">Auto-replies sent</div><div class="v" id="st-auto">—</div><div class="f" id="st-auto-f">&nbsp;</div></div>
+          <div class="card stat"><div class="l">Failed events</div><div class="v" id="st-fail">—</div><div class="f">from activity log</div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="section">
+            <div class="section-head">
+              <div><div class="h2">Latest posts</div><div class="sub">Click a post for insights and comments</div></div>
+              <button class="btn sm" data-goto="posts">View all</button>
+            </div>
+            <div class="media-grid" id="overview-media"></div>
+          </div>
+          <div>
+            <div class="section card pad">
+              <div class="h2">Setup checklist</div>
+              <ul class="checklist" id="checklist" style="margin-top:6px;"></ul>
+            </div>
+            <div class="section card">
+              <div class="row pad" style="padding-bottom:6px;"><div class="h2">Recent activity</div><span class="spacer"></span><button class="btn sm" data-goto="activity">All</button></div>
+              <div id="overview-activity"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ POSTS ============ -->
+      <div class="view" id="view-posts">
+        <div class="section-head">
+          <div><div class="h2">Your posts</div><div class="sub">Open a post to see reach, likes, saves and to reply, hide or delete comments.</div></div>
+          <button class="btn sm" onclick="loadMedia(true)">↻ Refresh</button>
+        </div>
+        <div class="media-grid" id="media-grid"></div>
+        <div style="text-align:center; margin-top:18px;"><button class="btn" id="more-btn" style="display:none;" onclick="loadMore()">Load more</button></div>
+      </div>
+
+      <!-- ============ RULES ============ -->
+      <div class="view" id="view-rules">
+        <div class="section-head">
+          <div><div class="h2">Keyword auto-replies</div><div class="sub">When a new comment or DM matches a keyword, the reply is sent automatically via the webhook.</div></div>
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-kind="comments">Comments</button>
+            <button class="tab" data-kind="dms">Direct messages</button>
+          </div>
+        </div>
+
+        <div class="card pad section">
+          <form class="rule-form" id="rule-form">
+            <div><label class="lbl" for="rule-keyword">Keyword</label><input class="input" id="rule-keyword" placeholder="price" required></div>
+            <div><label class="lbl" for="rule-reply">Reply</label><input class="input" id="rule-reply" placeholder="Hi! Check your DMs for pricing 💌" required></div>
+            <div><label class="lbl" for="rule-match">Match</label>
+              <select class="input" id="rule-match"><option value="contains">Contains</option><option value="exact">Exact match</option></select>
+            </div>
+            <button class="btn primary" type="submit">Add rule</button>
+          </form>
+        </div>
+
+        <div class="card section">
+          <div class="row pad" style="padding-bottom:12px;"><div class="h2" id="rules-title">Comment rules</div><span class="spacer"></span><span class="sub" id="rules-count"></span></div>
+          <div id="rules-list"></div>
+        </div>
+
+        <div class="card pad section">
+          <div class="h2">Test your rules</div>
+          <div class="sub" style="margin-bottom:12px;">Type a sample message to see which reply would be sent. Rules are checked newest first, only active rules count.</div>
+          <div class="tester"><input class="input" id="test-text" placeholder="e.g. what's the price?"></div>
+          <div class="test-result" id="test-result"></div>
+        </div>
+      </div>
+
+      <!-- ============ PUBLISH ============ -->
+      <div class="view" id="view-publish">
+        <div class="publish">
+          <div class="card pad">
+            <div class="h2" style="margin-bottom:14px;">New image post</div>
+            <div class="field">
+              <label class="lbl">Image</label>
+              <label class="drop" id="drop">
+                <input type="file" id="publish-file" accept="image/jpeg,image/png" hidden>
+                <div id="drop-text"><b>Click to upload</b> or drag a JPEG/PNG here (max 8 MB)</div>
+              </label>
+            </div>
+            <div class="field">
+              <label class="lbl" for="publish-url">…or public image URL</label>
+              <input class="input" id="publish-url" placeholder="https://example.com/photo.jpg">
+            </div>
+            <div class="field">
+              <label class="lbl" for="publish-caption">Caption</label>
+              <textarea class="input" id="publish-caption" rows="5" placeholder="Write a caption… #hashtags"></textarea>
+              <div class="hint" style="text-align:right;"><span id="cap-count">0</span> / 2200</div>
+            </div>
+            <div class="row">
+              <button class="btn ig" id="publish-btn">Publish to Instagram</button>
+              <span id="publish-status" class="sub"></span>
+            </div>
+            <p class="hint" style="margin-top:14px;">Instagram downloads the image from its URL, so it must be publicly reachable. On <code>localhost</code> uploads won't work — paste an already-hosted image URL instead.</p>
+          </div>
+          <div>
+            <div class="card phone section">
+              <div class="ph-head"><div class="avatar" id="ph-avatar">?</div><span id="ph-user">you</span></div>
+              <div class="ph-img" id="ph-img">Preview</div>
+              <div class="ph-cap" id="ph-cap"><span class="sub">Your caption will appear here</span></div>
+            </div>
+            <div class="card pad">
+              <div class="row"><div class="h2">Publishing quota</div><span class="spacer"></span><span class="sub mono" id="quota-text">—</span></div>
+              <div class="quota"><div id="quota-bar" style="width:0%"></div></div>
+              <div class="hint" style="margin-top:8px;">API-published posts allowed per rolling 24 hours.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ ACTIVITY ============ -->
+      <div class="view" id="view-activity">
+        <div class="section-head">
+          <div><div class="h2">Activity log</div><div class="sub">Webhooks, auto-replies, manual actions and logins. Refreshes every 10 seconds.</div></div>
+          <div class="filters" id="log-filters">
+            <button class="btn sm primary" data-filter="all">All</button>
+            <button class="btn sm" data-filter="auto">Auto-replies</button>
+            <button class="btn sm" data-filter="manual">Manual</button>
+            <button class="btn sm" data-filter="failed">Failed</button>
+          </div>
+        </div>
+        <div class="card" id="activity-list"></div>
+      </div>
+
+      <!-- ============ SETTINGS ============ -->
+      <div class="view" id="view-settings">
+        <div class="card pad section">
+          <div class="row" style="margin-bottom:14px;"><div class="h2">Connected account</div><span class="spacer"></span>
+            <button class="btn sm" id="refresh-token-btn">Extend token 60 days</button>
+            <button class="btn sm danger" id="logout-btn">Disconnect</button>
+          </div>
+          <dl class="kv" id="account-kv"></dl>
+        </div>
+        <div class="card pad section">
+          <div class="h2" style="margin-bottom:4px;">Webhook (real-time auto-replies)</div>
+          <div class="sub" style="margin-bottom:14px;">Meta App Dashboard → Instagram → Webhooks. Subscribe to <code>comments</code> and <code>messages</code>. The URL must be public HTTPS — use a tunnel like ngrok when testing locally.</div>
+          <dl class="kv">
+            <dt>Callback URL</dt><dd class="copy"><span class="code" id="wh-url">—</span><button class="btn sm" data-copy="wh-url">Copy</button></dd>
+            <dt>Verify token</dt><dd>Value of <code>VERIFY_TOKEN</code> in your <code>.env</code></dd>
+          </dl>
+        </div>
+        <div class="card pad section">
+          <div class="h2" style="margin-bottom:4px;">Instagram login (OAuth)</div>
+          <div class="sub" style="margin-bottom:14px;">Add this under “OAuth redirect URIs” in Instagram business login settings. Needs <code>IG_APP_ID</code> and <code>IG_APP_SECRET</code> in <code>.env</code>.</div>
+          <dl class="kv">
+            <dt>Redirect URI</dt><dd class="copy"><span class="code" id="redirect-uri">—</span><button class="btn sm" data-copy="redirect-uri">Copy</button></dd>
+            <dt>App credentials</dt><dd id="app-configured">—</dd>
+            <dt>Scopes</dt><dd id="scopes-list"></dd>
+          </dl>
+        </div>
+      </div>
+
+      </div><!-- /app -->
+    </div>
   </div>
 </div>
 
+<!-- Post drawer -->
+<div class="drawer-bg" id="drawer-bg"></div>
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div class="h2" style="margin:0;">Post details</div><span class="spacer"></span>
+    <a class="btn sm" id="drawer-link" target="_blank" rel="noopener">Open on Instagram ↗</a>
+    <button class="btn sm" id="drawer-close" aria-label="Close">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-media"><img id="drawer-img" alt=""><div><div class="sub" id="drawer-date"></div><div id="drawer-caption" style="margin-top:4px; white-space:pre-wrap; word-break:break-word;"></div></div></div>
+    <div class="h2" style="margin-bottom:8px;">Insights</div>
+    <div class="insights" id="drawer-insights"></div>
+    <div class="row" style="margin-bottom:4px;"><div class="h2">Comments</div><span class="spacer"></span><button class="btn sm" id="drawer-reload">↻</button></div>
+    <div id="drawer-comments"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
 <script>
-const API = "";
-let currentTab = "comments";
-let currentMediaId = null;
-let isConnected = false;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-async function jget(url){ const r = await fetch(API+url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function jpost(url, body){ const r = await fetch(API+url, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function jdel(url){ const r = await fetch(API+url, {method:"DELETE"}); return r.json(); }
-
-document.getElementById("webhook-url-hint").textContent = window.location.origin + "/webhook";
-
-async function loadProfile(){
-  try{
-    const p = await jget("/api/profile");
-    document.getElementById("username").textContent = "@"+p.username;
-    document.getElementById("account-type").textContent = p.account_type;
-    document.getElementById("avatar").textContent = p.username?.[0]?.toUpperCase() || "?";
-    document.getElementById("stat-posts").textContent = p.media_count ?? "—";
-    document.getElementById("status-text").textContent = "Connected";
-  }catch(e){
-    document.getElementById("status-text").textContent = "Not connected";
-    document.getElementById("status-text").parentElement.querySelector(".dot").style.background = "var(--err)";
+async function api(url, opts = {}){
+  const r = await fetch(url, opts);
+  let data = null;
+  try{ data = await r.json(); }catch(_){}
+  if(!r.ok){
+    const msg = (data && (data.detail || data.message)) || r.statusText || "Request failed";
+    const err = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    err.status = r.status;
+    throw err;
   }
+  return data;
 }
+const jget = (u) => api(u);
+const jsend = (method, u, body) => api(u, {method, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {})});
 
-async function loadMedia(){
-  const grid = document.getElementById("media-grid");
-  try{
-    const res = await jget("/api/media?limit=12");
-    const items = res.data || [];
-    if(items.length === 0){ grid.innerHTML = '<div class="empty">No posts found</div>'; return; }
-    grid.innerHTML = items.map(m => `
-      <div class="media-card" onclick="openMedia('${m.id}', ${JSON.stringify(m.caption||"").replace(/"/g,'&quot;')})">
-        <div class="thumb">${m.thumbnail_url || m.media_url ? `<img src="${m.thumbnail_url || m.media_url}">` : m.media_type}</div>
-        <div class="body">
-          <div class="caption">${(m.caption||"No caption").slice(0,80)}</div>
-          <div class="meta"><span>♥ ${m.like_count ?? 0}</span><span>💬 ${m.comments_count ?? 0}</span></div>
-        </div>
-      </div>
-    `).join("");
-  }catch(e){
-    grid.innerHTML = '<div class="empty">Could not load media - try reconnecting your Instagram account</div>';
-  }
+function toast(msg, kind = ""){
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.textContent = msg;
+  $("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
-
-async function openMedia(id, caption){
-  currentMediaId = id;
-  document.getElementById("modal-caption").textContent = caption || "(no caption)";
-  document.getElementById("modal-insights").innerHTML = "";
-  document.getElementById("modal-comments").innerHTML = '<div class="empty">Loading…</div>';
-  document.getElementById("modal-overlay").classList.add("show");
-
-  try{
-    const ins = await jget(`/api/media/${id}/insights`);
-    document.getElementById("modal-insights").innerHTML = (ins.data||[]).map(i => `
-      <div><div class="v">${i.values?.[0]?.value ?? 0}</div><div class="l">${i.name}</div></div>
-    `).join("");
-  }catch(e){}
-
-  try{
-    const c = await jget(`/api/media/${id}/comments`);
-    const comments = c.data || [];
-    if(comments.length === 0){
-      document.getElementById("modal-comments").innerHTML = '<div class="empty">No comments yet</div>';
-    } else {
-      document.getElementById("modal-comments").innerHTML = comments.map(cm => `
-        <div class="comment-row">
-          <div><span class="who">@${cm.username}</span>${cm.text}</div>
-          <div style="display:flex; gap:6px;">
-            <button onclick="replyPrompt('${cm.id}')">Reply</button>
-            <button onclick="hideCommentAction('${cm.id}')">Hide</button>
-            <button onclick="deleteCommentAction('${cm.id}')" style="color:var(--err);">Delete</button>
-          </div>
-        </div>
-      `).join("");
-    }
-  }catch(e){
-    document.getElementById("modal-comments").innerHTML = '<div class="empty">Could not load comments</div>';
-  }
+function banner(kind, html){
+  $("banner-slot").insertAdjacentHTML("beforeend",
+    `<div class="banner ${kind}"><span>${html}</span><button aria-label="Dismiss" onclick="this.parentElement.remove()">×</button></div>`);
 }
-
-async function replyPrompt(commentId){
-  const msg = prompt("Reply message:");
-  if(!msg) return;
-  try{
-    await jpost(`/api/comments/${commentId}/reply`, {message: msg});
-    alert("Reply sent ✅");
-    loadActivity();
-  }catch(e){
-    alert("Failed to send reply: " + e.message);
-  }
+function fmtNum(n){ return n == null ? "—" : Number(n).toLocaleString(); }
+function fmtDate(s){
+  if(!s) return "";
+  // SQLite CURRENT_TIMESTAMP is UTC without a zone marker
+  const d = new Date(/Z|[+-]\d\d:?\d\d$/.test(s) ? s : s.replace(" ", "T") + "Z");
+  return isNaN(d) ? s : d.toLocaleString([], {month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"});
 }
+function skeletonCards(n){ return Array.from({length:n}, () => `<div class="card media"><div class="thumb skeleton"></div><div class="body"><div class="cap">&nbsp;</div></div></div>`).join(""); }
 
-async function hideCommentAction(commentId){
-  if(!confirm("Hide this comment from your post?")) return;
-  try{
-    await jpost(`/api/comments/${commentId}/hide`, {hide: true});
-    alert("Comment hidden ✅");
-    openMedia(currentMediaId, document.getElementById("modal-caption").textContent);
-    loadActivity();
-  }catch(e){ alert("Failed: " + e.message); }
+// ---------------------------------------------------------------------------
+// Theme + navigation
+// ---------------------------------------------------------------------------
+(function(){
+  let t = null;
+  try{ t = localStorage.getItem("theme"); }catch(_){}
+  if(t) document.documentElement.dataset.theme = t;
+})();
+$("theme-toggle").onclick = (e) => {
+  e.preventDefault();
+  const cur = document.documentElement.dataset.theme
+    || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try{ localStorage.setItem("theme", next); }catch(_){}
+};
+
+const TITLES = {overview:"Overview", posts:"Posts & comments", rules:"Auto-replies", publish:"Create post", activity:"Activity", settings:"Settings"};
+function go(view){
+  document.querySelectorAll(".nav").forEach(n => n.classList.toggle("active", n.dataset.view === view));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+  $("view-title").textContent = TITLES[view];
+  $("sidebar").classList.remove("open");
+  if(location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
+  if(view === "posts" && !state.mediaLoaded) loadMedia();
+  if(view === "publish") loadQuota();
+  if(view === "activity") loadActivity();
+  window.scrollTo(0, 0);
 }
-
-async function deleteCommentAction(commentId){
-  if(!confirm("Permanently delete this comment? This can't be undone.")) return;
-  try{
-    await jdel(`/api/comments/${commentId}`);
-    alert("Comment deleted ✅");
-    openMedia(currentMediaId, document.getElementById("modal-caption").textContent);
-    loadActivity();
-  }catch(e){ alert("Failed: " + e.message); }
-}
-
-function closeModal(){ document.getElementById("modal-overlay").classList.remove("show"); }
-
-document.querySelectorAll(".tab").forEach(t => {
-  t.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    currentTab = t.dataset.tab;
-    loadRules();
-  });
+document.querySelectorAll(".nav").forEach(n => n.onclick = () => go(n.dataset.view));
+document.addEventListener("click", (e) => {
+  const g = e.target.closest("[data-goto]"); if(g) go(g.dataset.goto);
+  const c = e.target.closest("[data-copy]");
+  if(c){ navigator.clipboard?.writeText($(c.dataset.copy).textContent).then(() => toast("Copied")); }
 });
+$("menu-btn").onclick = () => $("sidebar").classList.toggle("open");
 
-async function loadRules(){
-  const endpoint = currentTab === "comments" ? "/api/rules/comments" : "/api/rules/dms";
-  const list = document.getElementById("rules-list");
-  try{
-    const rules = await jget(endpoint);
-    document.getElementById("stat-crules").textContent = currentTab==="comments" ? rules.length : document.getElementById("stat-crules").textContent;
-    if(rules.length === 0){ list.innerHTML = '<div class="empty">No rules yet — add one below</div>'; return; }
-    list.innerHTML = rules.map(r => `
-      <div class="rule-row">
-        <div><span class="kw">${r.keyword}</span><span class="arrow">→</span>${r.reply_text}</div>
-        <button class="del" onclick="deleteRule(${r.id})">✕</button>
-      </div>
-    `).join("");
-  }catch(e){
-    list.innerHTML = '<div class="empty">Could not load rules</div>';
-  }
-  // update both counts
-  try{
-    const cr = await jget("/api/rules/comments");
-    const dr = await jget("/api/rules/dms");
-    document.getElementById("stat-crules").textContent = cr.length;
-    document.getElementById("stat-drules").textContent = dr.length;
-  }catch(e){}
-}
-
-async function createRule(){
-  const keyword = document.getElementById("rule-keyword").value.trim();
-  const reply_text = document.getElementById("rule-reply").value.trim();
-  const match_type = document.getElementById("rule-match").value;
-  if(!keyword || !reply_text) return alert("Fill both fields");
-  const endpoint = currentTab === "comments" ? "/api/rules/comments" : "/api/rules/dms";
-  try{
-    await jpost(endpoint, {keyword, reply_text, match_type});
-    document.getElementById("rule-keyword").value = "";
-    document.getElementById("rule-reply").value = "";
-    loadRules();
-  }catch(e){ alert("Failed: " + e.message); }
-}
-
-async function deleteRule(id){
-  const endpoint = currentTab === "comments" ? `/api/rules/comments/${id}` : `/api/rules/dms/${id}`;
-  await jdel(endpoint);
-  loadRules();
-}
-
-async function loadActivity(){
-  const panel = document.getElementById("activity-panel");
-  try{
-    const logs = await jget("/api/activity?limit=30");
-    if(logs.length === 0){ panel.innerHTML = '<div class="empty">No activity yet</div>'; return; }
-    panel.innerHTML = logs.map(l => `
-      <div class="log-row">
-        <span class="time">${new Date(l.created_at).toLocaleTimeString()}</span>
-        <span class="badge ${l.status}">${l.status}</span>
-        <span>${l.event_type}</span>
-      </div>
-    `).join("");
-    const autoReplies = logs.filter(l => l.event_type.startsWith("auto_")).length;
-    document.getElementById("stat-autoreplies").textContent = autoReplies;
-  }catch(e){
-    panel.innerHTML = '<div class="empty">Could not load activity</div>';
-  }
-}
+const state = {auth:null, profile:null, media:[], next:null, mediaLoaded:false, ruleKind:"comments", rules:{comments:[], dms:[]}, logs:[], logFilter:"all"};
 
 // ---------------------------------------------------------------------------
-// Auth: gate the dashboard until an Instagram account is connected
+// Auth
 // ---------------------------------------------------------------------------
-
-function showBanner(kind, text){
-  document.getElementById("banner-slot").innerHTML =
-    `<div class="banner ${kind}"><span>${text}</span>` +
-    `<button onclick="this.parentElement.remove()">&times;</button></div>`;
-}
-
 function readLoginParams(){
-  const params = new URLSearchParams(window.location.search);
-  if(params.get("login") === "success"){
-    showBanner("ok", "Instagram account connected. All permissions are active.");
-  }
-  const err = params.get("login_error");
-  if(err) showBanner("err", "Login failed: " + err);
-  if(params.has("login") || params.has("login_error")){
-    window.history.replaceState({}, "", window.location.pathname);
-  }
+  const p = new URLSearchParams(location.search);
+  if(p.get("login") === "success") banner("ok", "Instagram account connected.");
+  if(p.get("login_error")) banner("err", "Login failed: " + esc(p.get("login_error")));
+  if(p.has("login") || p.has("login_error")) history.replaceState({}, "", location.pathname + location.hash);
 }
 
-async function logout(){
-  if(!confirm("Disconnect this Instagram account?")) return;
-  await jpost("/api/auth/logout");
-  window.location.reload();
+function setStatus(kind, text){
+  $("status-pill").className = "status-pill " + kind;
+  $("status-text").textContent = text;
 }
 
 async function checkAuth(){
-  let status;
+  try{ state.auth = await jget("/api/auth/status"); }
+  catch(e){ setStatus("bad", "Server offline"); banner("err", "Could not reach the backend. Is uvicorn running?"); return false; }
+  const s = state.auth;
+  $("gate-scopes").innerHTML = (s.scopes || []).map(x => `<span class="badge mono">${esc(x)}</span>`).join("");
+  $("login-gate").style.display = s.connected ? "none" : "block";
+  $("app").style.display = s.connected ? "block" : "none";
+  $("header-login").style.display = s.connected ? "none" : "inline-flex";
+  $("profile-chip").style.display = s.connected ? "flex" : "none";
+  if(!s.connected){
+    setStatus("bad", "Not connected");
+    if(!s.app_configured) banner("warn", "<b>IG_APP_ID</b> and <b>IG_APP_SECRET</b> are empty in <code>.env</code>, so “Continue with Instagram” won't work yet. Alternatively set <b>IG_ACCESS_TOKEN</b> to use an existing token.");
+  }
+  if(s.connected && s.expires_in_days !== undefined && s.expires_in_days < 10){
+    banner("warn", `Your access token expires in ${s.expires_in_days} days. Extend it from Settings.`);
+  }
+  return s.connected;
+}
+
+async function loadProfile(){
   try{
-    status = await jget("/api/auth/status");
+    const p = state.profile = await jget("/api/profile");
+    const initial = (p.username || "?")[0].toUpperCase();
+    $("username").textContent = "@" + p.username;
+    $("avatar").textContent = $("ph-avatar").textContent = initial;
+    $("ph-user").textContent = p.username;
+    $("st-posts").textContent = fmtNum(p.media_count);
+    $("st-type").textContent = (p.account_type || "").replace("_", " ").toLowerCase();
+    setStatus("ok", "Connected");
   }catch(e){
-    showBanner("err", "Could not reach the server.");
-    return false;
+    setStatus("bad", "Token error");
+    banner("err", "Instagram rejected the access token: " + esc(e.message) + " — reconnect or update <code>IG_ACCESS_TOKEN</code>.");
   }
-
-  isConnected = status.connected;
-  document.getElementById("gate-scopes").innerHTML =
-    (status.scopes || []).map(sc => `<span>${sc}</span>`).join("");
-  document.getElementById("login-gate").style.display = isConnected ? "none" : "block";
-  document.getElementById("dashboard-body").style.display = isConnected ? "block" : "none";
-  document.getElementById("profile-chip").style.display = isConnected ? "flex" : "none";
-  document.getElementById("header-login").style.display = isConnected ? "none" : "inline-flex";
-
-  if(!isConnected && !status.app_configured){
-    showBanner("err",
-      "IG_APP_ID and IG_APP_SECRET are not set in .env, so the login button will not work yet.");
-  }
-  if(isConnected && status.expires_in_days !== undefined && status.expires_in_days < 10){
-    showBanner("err",
-      `This access token expires in ${status.expires_in_days} days - reconnect to refresh it.`);
-  }
-  return isConnected;
+  renderSettings();
+  renderChecklist();
 }
 
 // ---------------------------------------------------------------------------
-// Publishing
+// Overview
 // ---------------------------------------------------------------------------
-
-function previewImage(){
-  const url = document.getElementById("publish-url").value.trim();
-  const img = document.getElementById("publish-preview");
-  img.src = url;
-  img.style.display = url ? "block" : "none";
+async function loadStats(){
+  try{
+    const s = await jget("/api/stats");
+    const [cr, dr] = await Promise.all([jget("/api/rules/comments"), jget("/api/rules/dms")]);
+    state.rules.comments = cr; state.rules.dms = dr;
+    const active = [...cr, ...dr].filter(r => r.is_active).length;
+    $("st-rules").textContent = active;
+    $("st-rules-f").textContent = `${cr.length} comment · ${dr.length} DM`;
+    $("nav-rules").textContent = cr.length + dr.length;
+    $("st-auto").textContent = fmtNum(s.auto_comment_replies + s.auto_dm_replies);
+    $("st-auto-f").textContent = `${s.auto_comment_replies} comments · ${s.auto_dm_replies} DMs`;
+    $("st-fail").textContent = fmtNum(s.failures);
+    renderChecklist();
+  }catch(e){}
 }
 
-async function uploadImage(){
-  const input = document.getElementById("publish-file");
-  const statusEl = document.getElementById("upload-status");
-  if(!input.files.length) return;
-  statusEl.textContent = "Uploading...";
-  const form = new FormData();
-  form.append("file", input.files[0]);
+function renderChecklist(){
+  const s = state.auth || {};
+  const hasRules = state.rules.comments.length + state.rules.dms.length > 0;
+  const webhookHit = state.logs.some(l => l.event_type === "webhook_received");
+  const isLocal = /localhost|127\.0\.0\.1/.test(location.hostname);
+  const items = [
+    [s.connected && state.profile, "Instagram account connected", state.profile ? "@" + state.profile.username : "Check your access token"],
+    [s.app_configured, "Instagram login configured", "Set IG_APP_ID and IG_APP_SECRET in .env"],
+    [hasRules, "At least one auto-reply rule", "Add rules under Auto-replies"],
+    [!isLocal, "Deployed on a public URL", "Webhooks need public HTTPS (deploy or use ngrok)"],
+    [webhookHit, "Webhook receiving events", "Connect the webhook in Meta App Dashboard"],
+  ];
+  $("checklist").innerHTML = items.map(([ok, title, help]) => `
+    <li><span class="ic ${ok ? "ok" : "todo"}">${ok ? "✓" : "!"}</span>
+      <div><div style="font-weight:600;">${esc(title)}</div>${ok ? "" : `<div class="sub">${esc(help)}</div>`}</div></li>`).join("");
+}
+
+// ---------------------------------------------------------------------------
+// Posts
+// ---------------------------------------------------------------------------
+function mediaCard(m, i){
+  const src = m.thumbnail_url || m.media_url;
+  const type = {CAROUSEL_ALBUM:"Carousel", VIDEO:"Reel", IMAGE:""}[m.media_type] ?? m.media_type;
+  return `<button class="card media" data-idx="${i}">
+    <div class="thumb">${src ? `<img loading="lazy" src="${esc(src)}" alt="">` : ""}${type ? `<span class="type">${esc(type)}</span>` : ""}</div>
+    <div class="body"><div class="cap">${esc(m.caption || "No caption")}</div>
+    <div class="meta"><span>♥ ${fmtNum(m.like_count ?? 0)}</span><span>💬 ${fmtNum(m.comments_count ?? 0)}</span><span style="margin-left:auto;">${m.timestamp ? new Date(m.timestamp).toLocaleDateString([], {month:"short", day:"numeric"}) : ""}</span></div></div>
+  </button>`;
+}
+function renderMedia(){
+  const html = state.media.map(mediaCard).join("");
+  $("media-grid").innerHTML = html || '<div class="empty">No posts yet</div>';
+  $("overview-media").innerHTML = state.media.slice(0, 6).map(mediaCard).join("") || '<div class="empty">No posts yet</div>';
+  $("more-btn").style.display = state.next ? "inline-flex" : "none";
+}
+async function loadMedia(force){
+  if(force || !state.media.length){
+    $("media-grid").innerHTML = $("overview-media").innerHTML = skeletonCards(6);
+  }
   try{
-    const r = await fetch("/api/upload", {method:"POST", body: form});
-    if(!r.ok) throw new Error(await r.text());
-    const data = await r.json();
-    document.getElementById("publish-url").value = data.image_url;
-    previewImage();
-    statusEl.textContent = "Uploaded";
+    const res = await jget("/api/media?limit=24");
+    state.media = res.data || [];
+    state.next = res.paging && res.paging.next ? true : null;
+    state.mediaLoaded = true;
+    renderMedia();
   }catch(e){
-    statusEl.textContent = "Upload failed";
-    alert("Upload failed: " + e.message);
+    const msg = `<div class="empty">Could not load posts: ${esc(e.message)}</div>`;
+    $("media-grid").innerHTML = $("overview-media").innerHTML = msg;
   }
 }
+async function loadMore(){
+  // The backend endpoint takes a limit only; ask for more and replace.
+  const n = state.media.length + 24;
+  $("more-btn").disabled = true;
+  try{
+    const res = await jget("/api/media?limit=" + Math.min(n, 100));
+    state.media = res.data || [];
+    state.next = n < 100 && res.paging && res.paging.next ? true : null;
+    renderMedia();
+  }catch(e){ toast(e.message, "err"); }
+  $("more-btn").disabled = false;
+}
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".media[data-idx]");
+  if(card) openPost(state.media[+card.dataset.idx]);
+});
 
-async function publishPost(){
-  const image_url = document.getElementById("publish-url").value.trim();
-  const caption = document.getElementById("publish-caption").value;
-  const statusEl = document.getElementById("publish-status");
-  const btn = document.getElementById("publish-btn");
-  if(!image_url) return alert("Choose an image or paste an image URL first");
+// ---------------------------------------------------------------------------
+// Post drawer: insights + comments
+// ---------------------------------------------------------------------------
+let currentPost = null;
+function openPost(m){
+  if(!m) return;
+  currentPost = m;
+  $("drawer-img").src = m.thumbnail_url || m.media_url || "";
+  $("drawer-caption").textContent = m.caption || "(no caption)";
+  $("drawer-date").textContent = m.timestamp ? new Date(m.timestamp).toLocaleString() : "";
+  $("drawer-link").href = m.permalink || "#";
+  $("drawer").classList.add("open"); $("drawer-bg").classList.add("open");
+  $("drawer").setAttribute("aria-hidden", "false");
+  loadInsights(m.id); loadComments(m.id);
+}
+function closePost(){ $("drawer").classList.remove("open"); $("drawer-bg").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
+$("drawer-close").onclick = closePost; $("drawer-bg").onclick = closePost;
+document.addEventListener("keydown", (e) => { if(e.key === "Escape") closePost(); });
+$("drawer-reload").onclick = () => currentPost && loadComments(currentPost.id);
 
+async function loadInsights(id){
+  const box = $("drawer-insights");
+  box.innerHTML = '<div class="skeleton" style="height:56px;"></div>'.repeat(4);
+  try{
+    const ins = await jget(`/api/media/${encodeURIComponent(id)}/insights`);
+    box.innerHTML = (ins.data || []).map(i => `<div><div class="v">${fmtNum(i.values?.[0]?.value ?? i.total_value?.value ?? 0)}</div><div class="l">${esc(i.name)}</div></div>`).join("")
+      || '<div class="sub">No insights for this post</div>';
+  }catch(e){ box.innerHTML = `<div class="sub" style="grid-column:1/-1;">Insights unavailable: ${esc(e.message)}</div>`; }
+}
+
+async function loadComments(id){
+  const box = $("drawer-comments");
+  box.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const c = await jget(`/api/media/${encodeURIComponent(id)}/comments`);
+    const list = c.data || [];
+    box.innerHTML = list.length ? list.map(cm => `
+      <div class="comment" data-cid="${esc(cm.id)}">
+        <div><span class="who">@${esc(cm.username)}</span>${esc(cm.text)}</div>
+        <div class="when">${cm.timestamp ? new Date(cm.timestamp).toLocaleString() : ""}${cm.like_count ? ` · ♥ ${cm.like_count}` : ""}</div>
+        <div class="actions">
+          <button class="btn sm" data-act="reply">Reply</button>
+          <button class="btn sm" data-act="hide">Hide</button>
+          <button class="btn sm danger" data-act="delete">Delete</button>
+        </div>
+        <form class="reply-box"><input class="input" placeholder="Write a reply…" required><button class="btn sm primary">Send</button></form>
+      </div>`).join("") : '<div class="empty">No comments yet</div>';
+  }catch(e){ box.innerHTML = `<div class="empty">Could not load comments: ${esc(e.message)}</div>`; }
+}
+
+$("drawer-comments").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-act]"); if(!btn) return;
+  const row = btn.closest(".comment"); const cid = row.dataset.cid;
+  if(btn.dataset.act === "reply"){
+    const box = row.querySelector(".reply-box"); box.classList.toggle("open"); box.querySelector("input").focus();
+  }
+  if(btn.dataset.act === "hide"){
+    if(!confirm("Hide this comment from your post?")) return;
+    try{ await jsend("POST", `/api/comments/${cid}/hide`, {hide:true}); toast("Comment hidden"); row.remove(); }
+    catch(err){ toast(err.message, "err"); }
+  }
+  if(btn.dataset.act === "delete"){
+    if(!confirm("Permanently delete this comment?")) return;
+    try{ await api(`/api/comments/${cid}`, {method:"DELETE"}); toast("Comment deleted"); row.remove(); }
+    catch(err){ toast(err.message, "err"); }
+  }
+});
+$("drawer-comments").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target; const cid = form.closest(".comment").dataset.cid;
+  const input = form.querySelector("input"); const btn = form.querySelector("button");
   btn.disabled = true;
-  statusEl.style.color = "var(--text-dim)";
-  statusEl.textContent = "Publishing to Instagram...";
+  try{ await jsend("POST", `/api/comments/${cid}/reply`, {message: input.value}); toast("Reply sent"); input.value = ""; form.classList.remove("open"); }
+  catch(err){ toast(err.message, "err"); }
+  btn.disabled = false;
+});
+
+// ---------------------------------------------------------------------------
+// Rules
+// ---------------------------------------------------------------------------
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === t));
+  state.ruleKind = t.dataset.kind;
+  $("rules-title").textContent = t.dataset.kind === "comments" ? "Comment rules" : "DM rules";
+  loadRules();
+});
+
+async function loadRules(){
+  const kind = state.ruleKind;
+  try{ state.rules[kind] = await jget(`/api/rules/${kind}`); }
+  catch(e){ $("rules-list").innerHTML = `<div class="empty">Could not load rules: ${esc(e.message)}</div>`; return; }
+  renderRules();
+  loadStats();
+}
+function renderRules(){
+  const rules = state.rules[state.ruleKind];
+  $("rules-count").textContent = `${rules.filter(r => r.is_active).length} active of ${rules.length}`;
+  $("rules-list").innerHTML = rules.length ? rules.map(r => `
+    <div class="rule ${r.is_active ? "" : "off"}" data-id="${r.id}">
+      <label class="switch" title="${r.is_active ? "Active" : "Paused"}"><input type="checkbox" ${r.is_active ? "checked" : ""}><span></span></label>
+      <div><span class="kw">${esc(r.keyword)}</span> <span class="badge">${esc(r.match_type)}</span><div class="reply">${esc(r.reply_text)}</div></div>
+      <button class="btn sm danger" data-del>Delete</button>
+    </div>`).join("") : '<div class="empty" style="border-top:1px solid var(--border);">No rules yet — add your first keyword above.</div>';
+  runTest();
+}
+$("rules-list").addEventListener("change", async (e) => {
+  const row = e.target.closest(".rule"); if(!row) return;
+  try{ await jsend("PATCH", `/api/rules/${state.ruleKind}/${row.dataset.id}`, {is_active: e.target.checked}); loadRules(); }
+  catch(err){ toast(err.message, "err"); e.target.checked = !e.target.checked; }
+});
+$("rules-list").addEventListener("click", async (e) => {
+  if(!e.target.closest("[data-del]")) return;
+  const row = e.target.closest(".rule");
+  if(!confirm("Delete this rule?")) return;
+  try{ await api(`/api/rules/${state.ruleKind}/${row.dataset.id}`, {method:"DELETE"}); toast("Rule deleted"); loadRules(); }
+  catch(err){ toast(err.message, "err"); }
+});
+$("rule-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const body = {keyword: $("rule-keyword").value.trim(), reply_text: $("rule-reply").value.trim(), match_type: $("rule-match").value};
+  if(!body.keyword || !body.reply_text) return;
+  try{ await jsend("POST", `/api/rules/${state.ruleKind}`, body); $("rule-keyword").value = ""; $("rule-reply").value = ""; toast("Rule added"); loadRules(); }
+  catch(err){ toast(err.message, "err"); }
+};
+// Mirrors backend/rules_engine.py so the tester matches what the webhook will do.
+function runTest(){
+  const text = $("test-text").value.toLowerCase();
+  const out = $("test-result");
+  if(!text.trim()){ out.innerHTML = ""; return; }
+  const hit = state.rules[state.ruleKind].filter(r => r.is_active).find(r => {
+    const kw = r.keyword.toLowerCase().trim();
+    return r.match_type === "exact" ? text.trim() === kw : text.includes(kw);
+  });
+  out.innerHTML = hit
+    ? `<span class="badge ok">Match: ${esc(hit.keyword)}</span> <span style="margin-left:6px;">→ ${esc(hit.reply_text)}</span>`
+    : `<span class="badge">No match</span> <span class="sub" style="margin-left:6px;">No reply would be sent.</span>`;
+}
+$("test-text").oninput = runTest;
+
+// ---------------------------------------------------------------------------
+// Publish
+// ---------------------------------------------------------------------------
+function updatePreview(){
+  const url = $("publish-url").value.trim();
+  $("ph-img").innerHTML = url ? `<img src="${esc(url)}" alt="" onerror="this.parentElement.textContent='Image could not be loaded'">` : "Preview";
+  const cap = $("publish-caption").value;
+  $("cap-count").textContent = cap.length;
+  $("ph-cap").innerHTML = cap ? `<b>${esc(state.profile?.username || "you")}</b> ${esc(cap)}` : '<span class="sub">Your caption will appear here</span>';
+}
+$("publish-url").oninput = updatePreview;
+$("publish-caption").oninput = updatePreview;
+
+async function uploadFile(file){
+  if(!file) return;
+  $("drop-text").textContent = "Uploading " + file.name + "…";
+  const form = new FormData(); form.append("file", file);
   try{
-    const res = await jpost("/api/publish", {image_url, caption});
-    statusEl.style.color = "var(--ok)";
-    statusEl.textContent = "Published! Media ID " + res.media_id;
-    document.getElementById("publish-caption").value = "";
-    document.getElementById("publish-url").value = "";
-    document.getElementById("publish-file").value = "";
-    document.getElementById("publish-preview").style.display = "none";
-    loadMedia();
-    loadActivity();
-  }catch(e){
-    statusEl.style.color = "var(--err)";
-    statusEl.textContent = "Failed: " + e.message;
-  }finally{
-    btn.disabled = false;
-  }
+    const data = await api("/api/upload", {method:"POST", body:form});
+    $("publish-url").value = data.image_url; updatePreview();
+    $("drop-text").innerHTML = `Uploaded <b>${esc(file.name)}</b> — click to replace`;
+  }catch(e){ $("drop-text").textContent = "Upload failed: " + e.message; toast(e.message, "err"); }
+}
+$("publish-file").onchange = (e) => uploadFile(e.target.files[0]);
+const drop = $("drop");
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); uploadFile(e.dataTransfer.files[0]); };
+
+$("publish-btn").onclick = async () => {
+  const image_url = $("publish-url").value.trim();
+  if(!image_url) return toast("Choose an image or paste an image URL first", "err");
+  if(!confirm("Publish this post to your Instagram feed now?")) return;
+  const btn = $("publish-btn"), st = $("publish-status");
+  btn.disabled = true; st.style.color = ""; st.textContent = "Publishing… this can take ~30 seconds";
+  try{
+    const res = await jsend("POST", "/api/publish", {image_url, caption: $("publish-caption").value});
+    st.style.color = "var(--ok)"; st.textContent = "Published ✓ (media " + res.media_id + ")";
+    $("publish-url").value = ""; $("publish-caption").value = ""; $("publish-file").value = "";
+    $("drop-text").innerHTML = "<b>Click to upload</b> or drag a JPEG/PNG here (max 8 MB)";
+    updatePreview(); loadMedia(true); loadQuota(); loadStats();
+  }catch(e){ st.style.color = "var(--err)"; st.textContent = "Failed: " + e.message; }
+  btn.disabled = false;
+};
+
+async function loadQuota(){
+  try{
+    const q = await jget("/api/publish/limit");
+    const d = (q.data || [])[0] || {};
+    const used = d.quota_usage ?? 0, total = d.config?.quota_total ?? 50;
+    $("quota-text").textContent = `${used} / ${total} used`;
+    $("quota-bar").style.width = Math.min(100, used / total * 100) + "%";
+  }catch(e){ $("quota-text").textContent = "unavailable"; }
 }
 
 // ---------------------------------------------------------------------------
+// Activity
+// ---------------------------------------------------------------------------
+const EVENT_LABELS = {
+  auto_comment_reply:"Auto comment reply", auto_dm_reply:"Auto DM reply", webhook_received:"Webhook received",
+  manual_comment_reply:"Manual reply", manual_hide_comment:"Comment hidden", manual_delete_comment:"Comment deleted",
+  publish_post:"Post published", login:"Login", logout:"Logout", token_refresh:"Token extended",
+};
+function logRow(l){
+  return `<div class="log"><span class="t">${esc(fmtDate(l.created_at))}</span>
+    <span><span class="badge ${l.status === "success" ? "ok" : "err"}">${esc(l.status)}</span></span>
+    <span style="font-weight:600;">${esc(EVENT_LABELS[l.event_type] || l.event_type)}</span>
+    <span class="d">${esc(l.detail)}</span></div>`;
+}
+async function loadActivity(){
+  try{ state.logs = await jget("/api/activity?limit=100"); }catch(e){ return; }
+  const f = state.logFilter;
+  const logs = state.logs.filter(l =>
+    f === "all" || (f === "failed" ? l.status === "failed" : l.event_type.startsWith(f + "_")));
+  $("activity-list").innerHTML = logs.map(logRow).join("") || '<div class="empty">Nothing here yet</div>';
+  $("overview-activity").innerHTML = state.logs.slice(0, 6).map(l => `
+    <div class="log" style="grid-template-columns:1fr auto; padding:10px 20px;">
+      <span><b style="font-weight:600;">${esc(EVENT_LABELS[l.event_type] || l.event_type)}</b> <span class="badge ${l.status === "success" ? "ok" : "err"}">${esc(l.status)}</span></span>
+      <span class="t">${esc(fmtDate(l.created_at))}</span></div>`).join("") || '<div class="empty">No activity yet</div>';
+  renderChecklist();
+}
+document.querySelectorAll("#log-filters [data-filter]").forEach(b => b.onclick = () => {
+  state.logFilter = b.dataset.filter;
+  document.querySelectorAll("#log-filters [data-filter]").forEach(x => x.classList.toggle("primary", x === b));
+  loadActivity();
+});
 
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+function renderSettings(){
+  const s = state.auth || {}, p = state.profile || {};
+  const rows = [
+    ["Username", p.username ? "@" + esc(p.username) : "—"],
+    ["Account ID", `<span class="mono">${esc(p.id || s.ig_user_id || "—")}</span>`],
+    ["Account type", esc(p.account_type || "—")],
+    ["Token source", s.source === "env" ? "<code>IG_ACCESS_TOKEN</code> in .env" : "Instagram login"],
+    ["Token expires", s.expires_in_days !== undefined ? `in ${s.expires_in_days} days` : "unknown (env token)"],
+  ];
+  $("account-kv").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("wh-url").textContent = location.origin + "/webhook";
+  $("redirect-uri").textContent = s.redirect_uri || "—";
+  $("app-configured").innerHTML = s.app_configured ? '<span class="badge ok">Configured</span>' : '<span class="badge err">Missing IG_APP_ID / IG_APP_SECRET</span>';
+  $("scopes-list").innerHTML = (s.scopes || []).map(x => `<span class="badge mono" style="margin:0 4px 4px 0;">${esc(x)}</span>`).join("");
+}
+$("logout-btn").onclick = async () => {
+  if(!confirm("Disconnect this Instagram account? A token set in .env will still be used as a fallback.")) return;
+  await jsend("POST", "/api/auth/logout"); location.reload();
+};
+$("refresh-token-btn").onclick = async () => {
+  try{ const r = await jsend("POST", "/api/auth/refresh"); toast(`Token extended (${Math.round((r.expires_in || 0) / 86400)} days)`); await checkAuth(); renderSettings(); }
+  catch(e){ toast(e.message, "err"); }
+};
+
+// ---------------------------------------------------------------------------
 async function boot(){
   readLoginParams();
-  const connected = await checkAuth();
-  if(!connected) return;
+  if(!(await checkAuth())) return;
+  renderSettings();
+  const start = (location.hash || "#overview").slice(1);
+  go(TITLES[start] ? start : "overview");
   loadProfile();
   loadMedia();
   loadRules();
   loadActivity();
-  setInterval(loadActivity, 10000);
+  setInterval(() => { loadActivity(); loadStats(); }, 10000);
 }
-
 boot();
 </script>
-
 </body>
 </html>
